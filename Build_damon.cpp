@@ -1,4 +1,4 @@
-#include "matt-daemon.hpp"
+#include "Md_header.hpp"
 
 
 Atr::Atr()
@@ -17,14 +17,11 @@ uid_t GetEffectiveUserId() {
 }
 
 
-void Atr::Log(std::string logmessage)
-{
-    
-}
-
 Atr::~Atr()
 {
     std::cout << "Daemon Stopped !" << std::endl;
+    if (this->fd > 0)
+        close(this->fd);
 }
 
 
@@ -59,21 +56,23 @@ void Atr::Daemon(){
         if (s_id < 0)
         {
             std::cout << "Failed To Create New Session !" << std::endl;
-            exit(0);
+            exit(1);
         }
-        close(STDIN_FILENO);
-        close(STDOUT_FILENO);
-        close(STDERR_FILENO);
+        // close(STDIN_FILENO);
+        // close(STDOUT_FILENO);
+        // close(STDERR_FILENO);
         if (!this->CheckFiles_Dirs())
-            exit(0);
+            exit(1);
+        this->Run();
+        exit(0);
         
     }
     else if (pid == -1){
     
         std::cout << "Fork Failed To Run !" << std::endl;
-        exit(0);
+        return;
     }
     if (pid > 0)
-        exit(0);
+        return;
 }
 

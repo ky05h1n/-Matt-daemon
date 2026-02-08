@@ -1,17 +1,21 @@
-
-
 CC = g++
 
-CFLAGS = -Wall -Wextra -Werror -std=c++98
+CFLAGS = -Wall -Wextra -Werror
 
-SRCS = matt-daemon.cpp
+SRCS = MattDaemon.cpp Build_damon.cpp Logs.cpp Socket.cpp
 
-all: Matt_daemon
+NAME = Matt_daemon
 
-Matt_daemon: $(SRCS)
-	$(CC) $(CFLAGS) $(SRCS) -o $@
+all: $(NAME)
+
+$(NAME): $(SRCS)
+	$(CC) $(CFLAGS) $(SRCS) -o $(NAME)
 
 clean:
-	rm -f Matt_daemon
+	rm -f $(NAME)
 
-re: clean all
+fclean: clean
+
+re: fclean all
+
+.PHONY: all clean fclean re

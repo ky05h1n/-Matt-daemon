@@ -1,0 +1,41 @@
+#include <iostream>
+#include <unistd.h>
+#include <fcntl.h>
+#include <cstdlib>
+#include <string>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/select.h>
+#include <cstring>      
+#include <sstream>  
+#include <ctime>       
+
+enum LogLevel {
+    INFO,
+    LOG,
+    ERROR
+};
+
+
+class Atr{
+
+    private :
+
+            std::string logpath;
+            std::string logfile;
+            std::string root;
+            int fd;
+    public :
+            Atr();
+            ~Atr();
+            void Daemon(void);
+            void Log(std::string logmessage, LogLevel level = INFO);
+            bool CheckFiles_Dirs();
+            void Run();
+
+};
+
+
+
+uid_t GetEffectiveUserId();
