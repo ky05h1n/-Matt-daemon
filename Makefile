@@ -2,7 +2,7 @@ CC = g++
 
 CFLAGS = -Wall -Wextra -Werror
 
-SRCS = MattDaemon.cpp Build_damon.cpp Logs.cpp Socket.cpp
+SRCS = src/MattDaemon.cpp src/Build_damon.cpp src/Logs.cpp src/Socket.cpp
 
 NAME = Matt_daemon
 
