@@ -1,5 +1,11 @@
 #include "Md_header.hpp"
 
+volatile sig_atomic_t g_sig = 0;
+
+void signalHandler(int sig) {
+    g_sig = sig;
+}
+
 
 Atr::Atr()
 {
@@ -11,7 +17,6 @@ Atr::Atr()
     lockFd = -1;
     tempfd = 0;
     Obj.fd = 0;
-    signalReceived = 0;
 }
 
 
@@ -25,7 +30,7 @@ uid_t GetEffectiveUserId() {
 
 Atr::~Atr()
 {
-    std::cout << "Done." << std::endl;
+   
 }
 
 
@@ -66,6 +71,7 @@ bool Atr::CreateLockFile(){
 
     if (flock(lockFd, LOCK_EX | LOCK_NB) < 0)
     {
+        
         close(lockFd);
         return false;
     }
@@ -109,6 +115,7 @@ void Atr::Daemon(){
             std::cout << "Failed To Create New Session !" << std::endl;
             exit(1);
         }
+        std::cout << "Started ! Daemon Running With PID : " << getpid() << std::endl;
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
         close(STDERR_FILENO);
@@ -120,6 +127,16 @@ void Atr::Daemon(){
         dup2(this->tempfd, STDIN_FILENO);
         dup2(this->tempfd, STDOUT_FILENO);
         dup2(this->tempfd, STDERR_FILENO);
+
+        int signals[] = {
+            SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGTRAP, SIGABRT,
+            SIGBUS, SIGFPE, SIGUSR1, SIGSEGV, SIGUSR2, SIGPIPE,
+            SIGALRM, SIGTERM, SIGCHLD, SIGCONT, SIGTSTP, SIGTTIN,
+            SIGTTOU, SIGURG, SIGXCPU, SIGXFSZ, SIGVTALRM, SIGPROF,
+            SIGWINCH, SIGIO, SIGSYS
+        };
+        for (size_t i = 0; i < sizeof(signals) / sizeof(signals[0]); i++)
+            signal(signals[i], signalHandler);
 
         if (!this->CheckFiles_Dirs())
             exit(1);

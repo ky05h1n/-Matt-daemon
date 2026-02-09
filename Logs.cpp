@@ -36,6 +36,5 @@ void Tintin_reporter::Log(std::string logmessage, LogLevel level) {
     }
     
     std::string logEntry = std::string(timestamp) + " " + levelStr + " - " + logmessage + "\n";
-    
     write(this->fd, logEntry.c_str(), logEntry.length());
 }

@@ -31,7 +31,7 @@ class Tintin_reporter{
 
 class Atr{
 
-    private :
+    public :
             std::string logpath;
             std::string logfile;
             std::string root;
@@ -41,7 +41,6 @@ class Atr{
             int tempfd;
     
             
-    public :
             Atr();
             ~Atr();
             void Daemon(void);

@@ -1,5 +1,7 @@
 #include "Md_header.hpp"
 
+extern volatile sig_atomic_t g_sig;
+
 void Atr::Run() {
 
     int serverSocket;
@@ -62,6 +64,17 @@ void Atr::Run() {
         }
         
         int activity = select(maxFd + 1, &readFds, NULL, NULL, NULL);
+        if (g_sig != 0) {
+            this->Obj.Log("Matt_daemon: Signal handler.");
+            for (int j = 0; j < 3; j++) {
+                if (clientSockets[j] > 0)
+                    close(clientSockets[j]);
+            }
+            close(serverSocket);
+            this->RemoveLockfile();
+            this->Obj.Log("Matt_daemon: Quitting.");
+            return;
+        }
         if (activity < 0) {
             continue;
         }
