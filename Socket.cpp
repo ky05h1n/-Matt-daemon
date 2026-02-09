@@ -124,8 +124,9 @@ void Atr::Run() {
                                 close(clientSockets[j]);
                         }
                         close(serverSocket);
-                        
+                        this->RemoveLockfile();
                         this->Obj.Log("Matt_daemon: Quitting.");
+
                         return;  
                     }
                     

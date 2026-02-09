@@ -9,7 +9,11 @@
 #include <sys/select.h>
 #include <cstring>      
 #include <sstream>  
-#include <ctime>       
+#include <ctime>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <csignal>
+#include <cerrno>
 
 enum LogLevel {
     INFO,
@@ -31,14 +35,20 @@ class Atr{
             std::string logpath;
             std::string logfile;
             std::string root;
+            std::string lockFilePath;
+            int lockFd;
             Tintin_reporter Obj;
-
+            int tempfd;
+    
+            
     public :
             Atr();
             ~Atr();
             void Daemon(void);
             bool CheckFiles_Dirs();
             void Run();
+            bool CreateLockFile();
+            void RemoveLockfile();
 
 };
 

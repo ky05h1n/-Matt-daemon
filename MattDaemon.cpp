@@ -10,6 +10,11 @@ int main(){
     else
     {
         Atr atr;
+        if (!atr.CreateLockFile())
+        {
+             std::cerr << "Can't open :/var/lock/matt_daemon.lock, Daemon already running..." << std::endl;
+             return 1;
+        }
         atr.Daemon(); 
     }
     return 0;
