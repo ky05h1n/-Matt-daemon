@@ -10,7 +10,6 @@ int main(){
     else
     {
         Atr atr;
-        std::cout << "Starting Daemon..." << std::endl;
         atr.Daemon(); 
     }
     return 0;

@@ -16,21 +16,27 @@ enum LogLevel {
     LOG,
     ERROR
 };
+class Tintin_reporter{
 
+    public :
+            int fd;
+            Tintin_reporter();
+            ~Tintin_reporter();
+            void Log(std::string logmessage, LogLevel level = INFO);
+};
 
 class Atr{
 
     private :
-
             std::string logpath;
             std::string logfile;
             std::string root;
-            int fd;
+            Tintin_reporter Obj;
+
     public :
             Atr();
             ~Atr();
             void Daemon(void);
-            void Log(std::string logmessage, LogLevel level = INFO);
             bool CheckFiles_Dirs();
             void Run();
 

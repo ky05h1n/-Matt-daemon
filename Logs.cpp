@@ -1,9 +1,17 @@
 
 #include "Md_header.hpp"
 
+Tintin_reporter::Tintin_reporter()
+{
 
-void Atr::Log(std::string logmessage, LogLevel level) {
-    if (this->fd <= 0)
+}
+ Tintin_reporter::~Tintin_reporter()
+{
+
+}
+
+void Tintin_reporter::Log(std::string logmessage, LogLevel level) {
+    if (this->fd < 0)
         return;  
     
     time_t now = time(NULL);
