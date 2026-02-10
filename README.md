@@ -1,3 +1,10 @@
+## Maintenance Mode (Bonus)
+
+Commands sent by a client:
+
+- `CMD_LOCK`: Enable maintenance mode (rejects new connections).
+- `CMD_UNLOCK`: Disable maintenance mode (admin only).
+- `CMD_STATUS`: Shows log size and maintenance state.
 <p align="center">
   <img src="https://img.shields.io/badge/Language-C++-blue?style=for-the-badge&logo=cplusplus&logoColor=white" />
   <img src="https://img.shields.io/badge/OS-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" />
