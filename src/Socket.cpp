@@ -1,156 +1,114 @@
 #include "../header/Md_header.hpp"
-
-
+#include "../header/ServerCore.hpp"
 
 extern volatile sig_atomic_t g_sig;
 
 void Atr::Run() {
+    class MandatoryServer : public ServerCore {
+    public:
+        explicit MandatoryServer(Atr &owner)
+            : ServerCore(4242, 3), atr(owner), maintenanceMode(false), adminSocket(-1) {}
 
-    int serverSocket;
-    int clientSockets[3] = {0, 0, 0}; 
-    struct sockaddr_in serverAddr;
-    fd_set readFds;
-    char buffer[1024];
-    
-    this->Obj.Log("Matt_daemon: Creating server.");
-    
-    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket < 0) {
-        this->Obj.Log("Matt_daemon: ERROR - Can't create socket");
-        exit(1);
-    }
-    
-    int opt = 1;
-    if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        this->Obj.Log("Matt_daemon: ERROR - setsockopt failed");
-        close(serverSocket);
-        exit(1);
-    }
-    
-    memset(&serverAddr, 0, sizeof(serverAddr));
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(4242);
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    
-    if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-        this->Obj.Log("Matt_daemon: ERROR - Can't bind to port 4242");
-        close(serverSocket);
-        exit(1);
-    }
-    
-    if (listen(serverSocket, 3) < 0) {
-        this->Obj.Log("Matt_daemon: ERROR - Can't listen on socket");
-        close(serverSocket);
-        exit(1);
-    }
-    
-    this->Obj.Log("Matt_daemon: Server created.");
-    this->Obj.Log("Matt_daemon: Entering Daemon mode.");
-    
-    std::stringstream ss;
-    ss << "Matt_daemon: started. PID: " << getpid();
-    this->Obj.Log(ss.str());
-    
-    while (true) {
-        FD_ZERO(&readFds);
-        
-        FD_SET(serverSocket, &readFds);
-        int maxFd = serverSocket;
-        
-        for (int i = 0; i < 3; i++) {
-            if (clientSockets[i] > 0) {
-                FD_SET(clientSockets[i], &readFds);
-                if (clientSockets[i] > maxFd)
-                    maxFd = clientSockets[i];
+    protected:
+        bool onAccept(ClientSlot &client) {
+            if (maintenanceMode) {
+                sendText(client.fd, "Server in maintenance mode. Try later.");
+                return false;
             }
+            atr.Obj.Log("Matt_daemon: New client connected", LEVEL_INFO);
+            return true;
         }
-        
-        int activity = select(maxFd + 1, &readFds, NULL, NULL, NULL);
-        if (g_sig != 0) {
-            this->Obj.Log("Matt_daemon: Signal handler.");
-            for (int j = 0; j < 3; j++) {
-                if (clientSockets[j] > 0)
-                    close(clientSockets[j]);
-            }
-            close(serverSocket);
-            this->RemoveLockfile();
-            this->Obj.Log("Matt_daemon: Quitting.");
-            return;
+
+        void onReject(int clientFd) {
+            atr.Obj.Log("Matt_daemon: Max clients reached, rejecting connection", LEVEL_ERROR);
+            sendText(clientFd, "Server busy. Try later.");
         }
-        if (activity < 0) {
-            continue;
-        }
-        
-        
-        if (FD_ISSET(serverSocket, &readFds)) {
-            struct sockaddr_in clientAddr;
-            socklen_t clientLen = sizeof(clientAddr);
-            int newSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientLen);
-            
-            if (newSocket < 0) {
-                this->Obj.Log("Matt_daemon: ERROR - Accept failed");
-                continue;
+
+        void onClientReadable(ClientSlot &client) {
+            char buffer[1024];
+            std::memset(buffer, 0, sizeof(buffer));
+            ssize_t bytesRead = recv(client.fd, buffer, sizeof(buffer) - 1, 0);
+
+            if (bytesRead <= 0) {
+                atr.Obj.Log("Matt_daemon: Client disconnected", LEVEL_INFO);
+                closeClient(client);
+                return;
             }
-            
-            bool added = false;
-            for (int i = 0; i < 3; i++) {
-                if (clientSockets[i] == 0) {
-                    clientSockets[i] = newSocket;
-                    this->Obj.Log("Matt_daemon: New client connected");
-                    added = true;
-                    break;
-                }
+
+            buffer[bytesRead] = '\0';
+            size_t len = strlen(buffer);
+            while (len > 0 && (buffer[len - 1] == '\n' || buffer[len - 1] == '\r')) {
+                buffer[len - 1] = '\0';
+                len--;
             }
-            
-            if (!added) {
-                this->Obj.Log("Matt_daemon: Max clients reached, rejecting connection");
-                close(newSocket);
+
+            if (strcmp(buffer, "quit") == 0) {
+                atr.Obj.Log("Matt_daemon: Request quit.", LEVEL_ERROR);
+                atr.RemoveLockfile();
+                atr.Obj.Log("Matt_daemon: Quitting.", LEVEL_ERROR);
+                requestStop();
+                return;
             }
-        }
-        
-        for (int i = 0; i < 3; i++) {
-            int clientSocket = clientSockets[i];
-            
-            if (clientSocket > 0 && FD_ISSET(clientSocket, &readFds)) {
-                
-                memset(buffer, 0, sizeof(buffer));
-                ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-                
-                if (bytesRead <= 0) {
-                   
-                    this->Obj.Log("Matt_daemon: Client disconnected");
-                    close(clientSocket);
-                    clientSockets[i] = 0;
+
+            if (strcmp(buffer, "CMD_LOCK") == 0) {
+                maintenanceMode = true;
+                adminSocket = client.fd;
+                atr.Obj.Log("Matt_daemon: Maintenance mode enabled.", LEVEL_INFO);
+                sendText(client.fd, "Daemon locked. New connections rejected.");
+                return;
+            }
+            if (strcmp(buffer, "CMD_UNLOCK") == 0) {
+                if (client.fd == adminSocket) {
+                    maintenanceMode = false;
+                    adminSocket = -1;
+                    atr.Obj.Log("Matt_daemon: Maintenance mode disabled.", LEVEL_INFO);
+                    sendText(client.fd, "Daemon unlocked. New connections accepted.");
                 } else {
-                    
-                    buffer[bytesRead] = '\0';
-                    
-                    size_t len = strlen(buffer);
-                    while (len > 0 && (buffer[len-1] == '\n' || buffer[len-1] == '\r')) {
-                        buffer[len-1] = '\0';
-                        len--;
-                    }
-                    
-                    if (strcmp(buffer, "quit") == 0) {
-                        this->Obj.Log("Matt_daemon: Request quit.");
-                        
-                        for (int j = 0; j < 3; j++) {
-                            if (clientSockets[j] > 0)
-                                close(clientSockets[j]);
-                        }
-                        close(serverSocket);
-                        this->RemoveLockfile();
-                        this->Obj.Log("Matt_daemon: Quitting.");
-
-                        return;  
-                    }
-                    
-                  
-                    std::string logMsg = "Matt_daemon: User input: ";
-                    logMsg += buffer;
-                    this->Obj.Log(logMsg, LOG);
+                    sendText(client.fd, "Only admin can unlock.");
                 }
+                return;
+            }
+            if (strcmp(buffer, "CMD_STATUS") == 0) {
+                std::stringstream status;
+                status << "Log size: " << atr.Obj.getLogFileSize() << " bytes, maintenance: ";
+                status << (maintenanceMode ? "ON" : "OFF");
+                sendText(client.fd, status.str());
+                return;
+            }
+
+            std::string logMsg = "Matt_daemon: User input: ";
+            logMsg += buffer;
+            atr.Obj.Log(logMsg, LEVEL_LOG);
+        }
+
+        void onClientDisconnect(ClientSlot &client, int lastFd) {
+            (void)client;
+            if (lastFd == adminSocket) {
+                maintenanceMode = false;
+                adminSocket = -1;
             }
         }
+
+        bool shouldStop() {
+            if (g_sig != 0) {
+                atr.Obj.Log("Matt_daemon: Signal handler.", LEVEL_ERROR);
+                atr.RemoveLockfile();
+                atr.Obj.Log("Matt_daemon: Quitting.", LEVEL_ERROR);
+                return true;
+            }
+            return false;
+        }
+
+    private:
+        Atr &atr;
+        bool maintenanceMode;
+        int adminSocket;
+    };
+
+    this->Obj.Log("Matt_daemon: Creating server.", LEVEL_INFO);
+    MandatoryServer server(*this);
+    if (!server.run()) {
+        this->Obj.Log("Matt_daemon: ERROR - Server setup failed", LEVEL_ERROR);
+        exit(1);
     }
 }

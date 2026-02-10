@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <unistd.h>
 #include <fcntl.h>
@@ -16,17 +18,28 @@
 #include <cerrno>
 
 enum LogLevel {
-    INFO,
-    LOG,
-    ERROR
+    LEVEL_INFO = 0,
+    LEVEL_LOG = 1,
+    LEVEL_ERROR = 2
 };
 class Tintin_reporter{
 
     public :
             int fd;
+            LogLevel currentLevel;
+            std::string logFilePath;
+            std::string archivePath;
+            // I think the recommended size is 1MB.
+            static const size_t MAX_LOG_SIZE = 500;
             Tintin_reporter();
             ~Tintin_reporter();
-            void Log(std::string logmessage, LogLevel level = INFO);
+            void Log(std::string logmessage, LogLevel level = LEVEL_INFO);
+            void setLogLevel(LogLevel level);
+            LogLevel getLogLevel() const;
+            void setLogFilePath(const std::string &path);
+            size_t getLogFileSize() const;
+    private:
+            void checkAndArchive();
 };
 
 class Atr{

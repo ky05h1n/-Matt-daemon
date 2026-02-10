@@ -19,17 +19,18 @@ int main(){
     {
         Atr atr;
         std::string fullpath = atr.logpath + atr.logfile;
+        atr.Obj.setLogFilePath(fullpath);
         atr.Obj.fd = open(fullpath.c_str(), O_CREAT | O_RDWR | O_APPEND, 0644);
         if (atr.Obj.fd < 0)
         {
             std::cerr << "Can't open log file for logging. Exiting." << std::endl;
             return 1;
         }
-        atr.Obj.Log("Matt_daemon: Started.");
+        atr.Obj.Log("Matt_daemon: Started.", LEVEL_INFO);
         if (!atr.CreateLockFile())
         {
-            atr.Obj.Log("Matt_daemon: Error file locked.", ERROR);
-            atr.Obj.Log("Matt_daemon: Quitting.");
+            atr.Obj.Log("Matt_daemon: Error file locked.", LEVEL_ERROR);
+            atr.Obj.Log("Matt_daemon: Quitting.", LEVEL_ERROR);
             std::cerr << "Can't open :/var/lock/matt_daemon.lock, Daemon already running..." << std::endl;
             close(atr.Obj.fd);
             return 1;

@@ -11,7 +11,7 @@ Atr::Atr()
 {
     std::cout << "Starting Daemon..." << std::endl;
     logpath = "/var/log/";
-    logfile = "matt-daemon.log";
+    logfile = "matt_daemon.log";
     lockFilePath = "/var/lock/matt_daemon.lock";
     root = "/";
     lockFd = -1;
@@ -48,6 +48,7 @@ bool Atr::CheckFiles_Dirs(){
         if (chdir(this->root.c_str()) == 0)
         {
             std::string fullpath = logpath + logfile;
+            this->Obj.setLogFilePath(fullpath);
             this->Obj.fd = open(fullpath.c_str(), O_RDWR | O_CREAT | O_APPEND, 0644);
             if (this->Obj.fd == -1)
             {
